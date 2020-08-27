@@ -6,6 +6,13 @@ import os
 import sys
 import zipfile
 
+"""
+
+简单的压缩程序,只为解决公司平台限制.工作使用
+
+"""
+
+# 工作中用到是固定的过滤文件夹 暂写死 后续考虑 argparse
 IGNORE_DIRS = ('.idea', '.git')
 
 
