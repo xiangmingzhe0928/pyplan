@@ -2,17 +2,22 @@
 # -*- coding: utf-8 -*-
 # mingzhe.xiang
 # 2020/8/26 15:58
-import os, sys
+import os
+import sys
 import zipfile
+
+IGNORE_DIRS = ('.idea', '.git')
 
 
 def zip_dir(target_dir=os.getcwd(), include_empty_dir=True):
     zip_file_name = target_dir + '.zip'
     parent_path = os.path.split(target_dir)[0]
+    ignore_paths = list(map(lambda x: os.path.join(target_dir, x), IGNORE_DIRS))
     try:
         zip_file = zipfile.ZipFile(zip_file_name, 'w', zipfile.ZIP_DEFLATED)
+        # 遍历目录文件信息
         for root, dirs, files in os.walk(target_dir):
-            if root.startswith(os.path.join(target_dir, '.idea')):
+            if [x for x in ignore_paths if root.startswith(x)]:
                 continue
 
             # 定义压缩目录起始
