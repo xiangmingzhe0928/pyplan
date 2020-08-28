@@ -1,26 +1,16 @@
-.idea
-.DS_Store
+
 *.iml
-*/target
 *.idea
 /target
-target
 */settings
 .project
 *.prefs
 __pycache__/
-*/.settings
-
-.classpath
-/.settings/
-
-/data
 
 /bin/
 
 */**.launch
 
 */.*
-/bin/
 **.log*
 venv/
