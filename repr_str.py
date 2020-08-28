@@ -21,3 +21,4 @@ if __name__ == '__main__':
     print(student)
     # iterable时 使用__repr__
     print([student, Student('sisi', 22)])
+    # print(dir(student))
