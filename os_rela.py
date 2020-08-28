@@ -1,7 +1,5 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-# mingzhe.xiang
-# 2020/8/25 18:23
 
 import os
 
@@ -11,6 +9,8 @@ import os
 """
 print(os.listdir('.'))
 print(os.path.abspath('.'))
+print(os.getcwd())
 # 获取所有python文件
 print([x for x in os.listdir('.') if os.path.splitext(x)[1] == '.py'])
-print(list(map(lambda x: os.path.split(x)[1], [x for x in os.listdir('.')])))
+# max key ==> [1,2,3]
+print(max([1, 2, 3], [4], [11, 299], key=lambda x: len(x), ))

@@ -1,7 +1,5 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-# mingzhe.xiang
-# 2020/8/26 15:58
 import os
 import sys
 import zipfile

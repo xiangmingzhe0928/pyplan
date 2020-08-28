@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-# mingzhe.xiang
-# 2020/8/25 17:18
+
 from collections import defaultdict
 
 
