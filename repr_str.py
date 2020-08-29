@@ -3,6 +3,7 @@
 
 
 class Student:
+
     def __init__(self, name, age):
         self._name = name
         self._age = age
@@ -14,6 +15,10 @@ class Student:
         # return self.__repr__()
         return f'__str__: name:{self._name} ===> age:{self._age}'
 
+    @classmethod
+    def f(cls):
+        print(f'fff{cls}')
+
 
 if __name__ == '__main__':
     student = Student('zhangsan', 20)
@@ -22,3 +27,4 @@ if __name__ == '__main__':
     # iterable时 使用__repr__
     print([student, Student('sisi', 22)])
     # print(dir(student))
+    print(Student.f())
