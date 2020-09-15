@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import requests
 from requests.exceptions import HTTPError
+import threading
 
 """
  SecKill HPV
@@ -63,6 +64,16 @@ def get_vaccine_list():
     _get(URLS['VACCINE_LIST'], params=req_param, headers=REQ_HEADERS, verify=False)
 
 
+def get_server_time():
+    """
+    获取服务器当前时间戳
+    秒杀开始时间由服务器控制
+    :return: 服务器时间戳
+    """
+    res_json = _get(URLS['SERVER_TIME'])
+    return res_json['data']
+
+
 def get_user():
     """
     获取用户信息(从微信小程序入口 使用微信tk和cookie查询指定用户信息)
@@ -71,13 +82,30 @@ def get_user():
     _get(URLS['USER_INFO'], headers=REQ_HEADERS, verify=False)
 
 
+KILL_FLAG = False
+
+
 def sec_kill():
     """
     执行秒杀操作
     :return:
     """
-    req_param = {'seckillId': '676', 'vaccineIndex': '1', 'linkmanId': 'xx', 'idCardNo': 'xx'}
-    _get(URLS['SEC_KILL'], params=req_param, headers=REQ_HEADERS, verify=False)
+    global KILL_FLAG
+    while not KILL_FLAG:
+        req_param = {'seckillId': '676', 'vaccineIndex': '1', 'linkmanId': 'xx', 'idCardNo': 'xx'}
+        res_json = _get(URLS['SEC_KILL'], params=req_param, headers=REQ_HEADERS, verify=False)
+        if res_json['code'] == '0000':
+            print(f'---Success---')
+            KILL_FLAG = True
+
+
+class KillThread(threading.Thread):
+    def __init__(self, name):
+        threading.Thread.__init__(self)
+        self.name = name
+
+    def run(self):
+        sec_kill()
 
 
 if __name__ == '__main__':
@@ -86,4 +114,5 @@ if __name__ == '__main__':
     REQ_HEADERS[
         'Cookie'] = '_xxhm_=%7B%22headerImg%22%3A%22http%3A%2F%2Fthirdwx.qlogo.cn%2Fmmopen%2Fic9BcyRDyOIvnjrvBdDBtXAVdFx00GRyl0okTAEgNQ2p8AjJZZuibm7h2wJ2icNbMs5EnyRib9TbtrsWCDj4gPuR3aK6F41icxL6M%2F132%22%2C%22mobile%22%3A%22130****9389%22%2C%22nickName%22%3A%22Min+Jet%22%2C%22sex%22%3A2%7D; _xzkj_=wxapptoken:10:de185e962abea05b50e4dde9e7558680_52a48bbf99cd9aff745339e6d94f57e9; 8de1=52850933d3ba5e1777'
     # sec_kill()
+    # 计算秒杀开始剩余毫秒数 startTime - serverNowTime
     pass
