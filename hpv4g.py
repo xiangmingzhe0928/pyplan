@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 import requests
 from requests.exceptions import HTTPError
-import threading
 import datetime
+from threading import current_thread
+from concurrent.futures import ThreadPoolExecutor
 
 """
  SecKill HPV
@@ -45,13 +46,13 @@ def _get(url, params=None, **kwargs):
         response.raise_for_status()
     except HTTPError as http_err:
         print(f'--------HTTP error occurred--------: {http_err}')
-        return None
+        exit(1)
     except Exception as err:
         print(f'--------Other error occurred--------: {err}')
-        return None
+        exit(1)
     else:
-        res_json = response.json();
-        print(f'Response:{res_json}')
+        res_json = response.json()
+        print(f'{current_thread().name}---Response:{res_json}')
         return res_json
 
 
@@ -79,7 +80,11 @@ def get_vaccine_list():
     """
     # 分页查询可秒杀疫苗 regionCode:5101[四川成都区域编码]
     req_param_list = {'offset': '0', 'limit': '10', 'regionCode': '5101'}
-    return _get(URLS['VACCINE_LIST'], params=req_param_list, headers=REQ_HEADERS, verify=False)
+    datas = _get(URLS['VACCINE_LIST'], params=req_param_list, headers=REQ_HEADERS, verify=False)['data']
+    if not datas:
+        print(f'---暂无可秒杀疫苗---')
+        exit(0)
+    return datas
 
 
 def get_server_time():
@@ -97,56 +102,38 @@ def get_user():
     获取用户信息(从微信小程序入口 使用微信tk和cookie查询指定用户信息)
     :return: 用户信息
     """
-    _get(URLS['USER_INFO'], headers=REQ_HEADERS, verify=False)
+    res_json = _get(URLS['USER_INFO'], headers=REQ_HEADERS, verify=False)
+    if '0000' == res_json['code']:
+        return res_json['data']
+    print(f'获取用户信息失败:{res_json}')
+    exit(1)
 
 
 # 秒杀结果标志位
 KILL_FLAG = False
 
 
-def sec_kill_task(thread_name):
+def sec_kill_task(req_param):
     """
     执行秒杀操作
     :return:
     """
-    print(f'------Thread:{thread_name} start------')
     global KILL_FLAG
     while not KILL_FLAG:
         res_json = _get(URLS['SEC_KILL'], params=req_param, headers=REQ_HEADERS, verify=False)
         if res_json['code'] == '0000':
-            print(f'Thread:{thread_name} Kill Success')
+            print(f'{current_thread().name} Kill Success')
             KILL_FLAG = True
 
 
-class KillThread(threading.Thread):
-    """
-    秒杀线程
-    后续使用线程池
-    """
-
-    def __init__(self, name):
-        threading.Thread.__init__(self)
-        self.name = name
-
-    def run(self):
-        sec_kill_task(self.name)
-
-
-if __name__ == '__main__':
-    # 传入Cookie
-    REQ_HEADERS['tk'] = 'wxapptoken:10:de185e962abea05b50e4dde9e7558680_d0927647191d344b6999cf28f2ffc04b'
-    REQ_HEADERS[
-        'Cookie'] = '_xxhm_=%7B%22headerImg%22%3A%22http%3A%2F%2Fthirdwx.qlogo.cn%2Fmmopen%2Fic9BcyRDyOIvnjrvBdDBtXAVdFx00GRyl0okTAEgNQ2p8AjJZZuibm7h2wJ2icNbMs5EnyRib9TbtrsWCDj4gPuR3aK6F41icxL6M%2F132%22%2C%22mobile%22%3A%22130****9389%22%2C%22nickName%22%3A%22Min+Jet%22%2C%22sex%22%3A2%7D; _xzkj_=wxapptoken:10:de185e962abea05b50e4dde9e7558680_d0927647191d344b6999cf28f2ffc04b; 8de1=d00b3ed29172b8c4b8'
-
+def run():
     # 获取疫苗信息(默认选取第一个待秒疫苗)
-    vaccines = get_vaccine_list()['data']
-    if len(vaccines) == 0:
-        print(f'---暂无可秒杀疫苗---')
-        exit(0)
-
+    vaccines = get_vaccine_list()
+    # 获取秒杀人信息
+    user = get_user()
     # 秒杀请求参数
-    req_param = {'vaccineIndex': '1',  'linkmanId': 'xx', 'idCardNo': 'xx', 'seckillId': vaccines[0]['id']}
-
+    req_param = {'vaccineIndex': '1', 'seckillId': vaccines[0]['id'], 'linkmanId': user['id'],
+                 'idCardNo': user['idCardNo']}
     # 计算秒杀开始剩余毫秒数 startTime - serverNowTime
     _start_time_unix = int(datetime.datetime.strptime(vaccines[0]['startTime'], '%Y-%m-%d %H:%M:%S').timestamp() * 1000)
     if _start_time_unix - get_server_time() > 5 * 1000:
@@ -157,11 +144,15 @@ if __name__ == '__main__':
     while _start_time_unix - int(datetime.datetime.now().timestamp() * 1000) > 300:
         pass
 
-    thread1 = KillThread('killThread1')
-    thread2 = KillThread('killThread2')
-    thread1.start()
-    thread2.start()
+    # python3.8 默认max_workers = min(32, os.cpu_count() + 4)
+    with ThreadPoolExecutor() as t:
+        for _ in range(20):
+            t.submit(get_server_time, req_param)
 
-    thread1.join()
-    thread2.join()
-    pass
+
+if __name__ == '__main__':
+    # Cookie 后续使用argparse.ArgumentParser()传入
+    REQ_HEADERS['tk'] = 'wxapptoken:10:de185e962abea05b50e4dde9e7558680_d0927647191d344b6999cf28f2ffc04b'
+    REQ_HEADERS[
+        'Cookie'] = '_xxhm_=%7B%22headerImg%22%3A%22http%3A%2F%2Fthirdwx.qlogo.cn%2Fmmopen%2Fic9BcyRDyOIvnjrvBdDBtXAVdFx00GRyl0okTAEgNQ2p8AjJZZuibm7h2wJ2icNbMs5EnyRib9TbtrsWCDj4gPuR3aK6F41icxL6M%2F132%22%2C%22mobile%22%3A%22130****9389%22%2C%22nickName%22%3A%22Min+Jet%22%2C%22sex%22%3A2%7D; _xzkj_=wxapptoken:10:de185e962abea05b50e4dde9e7558680_d0927647191d344b6999cf28f2ffc04b; 8de1=d00b3ed29172b8c4b8'
+    run()
