@@ -120,13 +120,36 @@ def sec_kill_task(req_param):
     """
     global KILL_FLAG
     while not KILL_FLAG:
+        '''
+        服务器做了频率限制 短时间请求太多返回 “操作频繁” 无法确定是 IP限制还是ID限制
+        - 考虑加入ip代理处理IP限制 init_ip_proxy_pool()
+        '''
         res_json = _get(URLS['SEC_KILL'], params=req_param, headers=REQ_HEADERS, verify=False)
         if res_json['code'] == '0000':
             print(f'{current_thread().name} Kill Success')
             KILL_FLAG = True
 
 
+def init_ip_proxy_pool():
+    """
+    填充临时IP代理池。（考虑到秒杀场景瞬时性,提前初始化可用的IP代理 避免秒杀中临时调用API）
+
+    IP代理来源
+        1.使用收费的代理商提供
+        2.自建IP代理池
+            - 爬取免费IP代理
+            - 验证IP可用
+            - 持久化
+            - 定时更新可用IP
+
+    这里直接使用第三方提供的API(避免自建轮子、搭建环境。测试)：https://github.com/jiangxianli/ProxyIpLib
+    :return: ip代理池列表
+    """
+    pass
+
+
 def run():
+
     # 获取疫苗信息(默认选取第一个待秒疫苗)
     vaccines = get_vaccine_list()
     # 获取秒杀人信息
@@ -147,7 +170,7 @@ def run():
     # python3.8 默认max_workers = min(32, os.cpu_count() + 4)
     with ThreadPoolExecutor() as t:
         for _ in range(20):
-            t.submit(get_server_time, req_param)
+            t.submit(sec_kill_task, req_param)
 
 
 if __name__ == '__main__':
