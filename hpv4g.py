@@ -149,8 +149,7 @@ def init_ip_proxy_pool(pages=2) -> list:
     ip_proxy_res = [
         _get(URLS['IP_PROXY'], params={'page': p, 'country': '中国', 'order_by': 'validated_at'})['data']['data'] for
         p in range(1, pages + 1)]
-
-    return ['{0}:{1}'.format(data['ip'], data['port']) for data in list(chain(*ip_proxy_res))]
+    return [f'{data["ip"]}:{data["port"]}' for data in list(chain(*ip_proxy_res))]
 
 
 def run():
