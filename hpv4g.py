@@ -5,6 +5,7 @@ from requests.exceptions import HTTPError
 import datetime
 from threading import current_thread
 from concurrent.futures import ThreadPoolExecutor
+from itertools import chain
 
 """
  SecKill HPV
@@ -18,12 +19,12 @@ from concurrent.futures import ThreadPoolExecutor
 """
 
 URLS = {
+    "IP_PROXY": "https://ip.jiangxianli.com/api/proxy_ips",
     "SERVER_TIME": "https://miaomiao.scmttec.com/seckill/seckill/now2.do",
     "VACCINE_LIST": "https://miaomiao.scmttec.com/seckill/seckill/list.do",
     "USER_INFO": "https://miaomiao.scmttec.com/seckill/linkman/findByUserId.do",
     "SEC_KILL": "https://miaomiao.scmttec.com/seckill/seckill/subscribe.do"
 }
-
 REQ_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36 MicroMessenger/7.0.9.501 NetType/WIFI MiniProgramEnv/Windows WindowsWechat",
     "Referer": "https://servicewechat.com/wxff8cad2e9bf18719/10/page-frame.html",
@@ -130,7 +131,7 @@ def sec_kill_task(req_param):
             KILL_FLAG = True
 
 
-def init_ip_proxy_pool():
+def init_ip_proxy_pool(pages=2) -> list:
     """
     填充临时IP代理池。（考虑到秒杀场景瞬时性,提前初始化可用的IP代理 避免秒杀中临时调用API）
 
@@ -145,11 +146,14 @@ def init_ip_proxy_pool():
     这里直接使用第三方提供的API(避免自建轮子、搭建环境。测试)：https://github.com/jiangxianli/ProxyIpLib
     :return: ip代理池列表
     """
-    pass
+    ip_proxy_res = [
+        _get(URLS['IP_PROXY'], params={'page': p, 'country': '中国', 'order_by': 'validated_at'})['data']['data'] for
+        p in range(1, pages + 1)]
+
+    return ['{0}:{1}'.format(data['ip'], data['port']) for data in list(chain(*ip_proxy_res))]
 
 
 def run():
-
     # 获取疫苗信息(默认选取第一个待秒疫苗)
     vaccines = get_vaccine_list()
     # 获取秒杀人信息
