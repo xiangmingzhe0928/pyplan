@@ -114,7 +114,7 @@ def get_user():
 KILL_FLAG = False
 
 
-def sec_kill_task(req_param):
+def sec_kill_task(req_param, proxy=None):
     """
     执行秒杀操作
     :return:
@@ -125,7 +125,7 @@ def sec_kill_task(req_param):
         服务器做了频率限制 短时间请求太多返回 “操作频繁” 无法确定是 IP限制还是ID限制
         - 考虑加入ip代理处理IP限制 init_ip_proxy_pool()
         '''
-        res_json = _get(URLS['SEC_KILL'], params=req_param, headers=REQ_HEADERS, verify=False)
+        res_json = _get(URLS['SEC_KILL'], params=req_param, headers=REQ_HEADERS, proxies=proxy, verify=False)
         if res_json['code'] == '0000':
             print(f'{current_thread().name} Kill Success')
             KILL_FLAG = True
@@ -160,6 +160,8 @@ def run():
     # 秒杀请求参数
     req_param = {'vaccineIndex': '1', 'seckillId': vaccines[0]['id'], 'linkmanId': user['id'],
                  'idCardNo': user['idCardNo']}
+    # 初始化IP代理池
+    ip_proxys = init_ip_proxy_pool()
     # 计算秒杀开始剩余毫秒数 startTime - serverNowTime
     _start_time_unix = int(datetime.datetime.strptime(vaccines[0]['startTime'], '%Y-%m-%d %H:%M:%S').timestamp() * 1000)
     if _start_time_unix - get_server_time() > 5 * 1000:
@@ -172,8 +174,10 @@ def run():
 
     # python3.8 默认max_workers = min(32, os.cpu_count() + 4)
     with ThreadPoolExecutor() as t:
-        for _ in range(20):
-            t.submit(sec_kill_task, req_param)
+        ip_proxy_len = len(ip_proxys)
+        for i in range(100):
+            index = i % ip_proxy_len
+            t.submit(sec_kill_task, req_param, {'https': None if index == 0 else ip_proxys[index]})
 
 
 if __name__ == '__main__':
