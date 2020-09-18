@@ -6,6 +6,7 @@ import datetime
 from threading import current_thread
 from concurrent.futures import ThreadPoolExecutor
 from itertools import chain
+import argparse
 
 """
  SecKill HPV
@@ -81,7 +82,12 @@ def get_vaccine_list():
     """
     # 分页查询可秒杀疫苗 regionCode:5101[四川成都区域编码]
     req_param_list = {'offset': '0', 'limit': '10', 'regionCode': '5101'}
-    datas = _get(URLS['VACCINE_LIST'], params=req_param_list, headers=REQ_HEADERS, verify=False)['data']
+    res_vaccine = _get(URLS['VACCINE_LIST'], params=req_param_list, headers=REQ_HEADERS, verify=False)
+    if '0000' != res_vaccine['code']:
+        print(res_vaccine['msg'])
+        exit(1)
+
+    datas = res_vaccine['data']
     if not datas:
         print(f'---暂无可秒杀疫苗---')
         exit(0)
@@ -180,9 +186,27 @@ def run():
             t.submit(sec_kill_task, req_param, {'https': None if index == 0 else ip_proxys[index]})
 
 
+def _get_arguments():
+    """
+    解析参数
+    :return:
+    """
+    def _valid_int_type(i):
+        valid_int = int(i)
+        if valid_int < 1:
+            raise argparse.ArgumentTypeError('invalid int argument')
+        return valid_int
+
+    parser = argparse.ArgumentParser(description='HPV SecKill 疫苗秒杀')
+    parser.add_argument('tk', help='名为tk的http header')
+    parser.add_argument('cookie', help='http请求cookie')
+    parser.add_argument('-mw', '--max_workers', type=_valid_int_type, help='最大线工作线程数 默认使用 min(32, os.cpu_count() + 4)')
+    parser.add_argument('-rc', '--region_code', type=int, help='区域编码 **暂不支持**')
+    return parser.parse_args()
+
+
 if __name__ == '__main__':
-    # Cookie 后续使用argparse.ArgumentParser()传入
-    REQ_HEADERS['tk'] = 'wxapptoken:10:de185e962abea05b50e4dde9e7558680_d0927647191d344b6999cf28f2ffc04b'
-    REQ_HEADERS[
-        'Cookie'] = '_xxhm_=%7B%22headerImg%22%3A%22http%3A%2F%2Fthirdwx.qlogo.cn%2Fmmopen%2Fic9BcyRDyOIvnjrvBdDBtXAVdFx00GRyl0okTAEgNQ2p8AjJZZuibm7h2wJ2icNbMs5EnyRib9TbtrsWCDj4gPuR3aK6F41icxL6M%2F132%22%2C%22mobile%22%3A%22130****9389%22%2C%22nickName%22%3A%22Min+Jet%22%2C%22sex%22%3A2%7D; _xzkj_=wxapptoken:10:de185e962abea05b50e4dde9e7558680_d0927647191d344b6999cf28f2ffc04b; 8de1=d00b3ed29172b8c4b8'
+    args = _get_arguments()
+    REQ_HEADERS['tk'] = args.tk
+    REQ_HEADERS['Cookie'] = args.cookie
     run()
