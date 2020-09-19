@@ -164,8 +164,8 @@ def run():
     # 获取秒杀人信息
     user = get_user()
     # 秒杀请求参数
-    req_param = {'vaccineIndex': '1', 'seckillId': vaccines[0]['id'], 'linkmanId': user['id'],
-                 'idCardNo': user['idCardNo']}
+    req_param = {'vaccineIndex': '1', 'seckillId': vaccines[0]['id'], 'linkmanId': user[0]['id'],
+                 'idCardNo': user[0]['idCardNo']}
     # 初始化IP代理池
     ip_proxys = init_ip_proxy_pool()
     # 计算秒杀开始剩余毫秒数 startTime - serverNowTime
