@@ -54,7 +54,7 @@ def _get(url, params=None, **kwargs):
         exit(1)
     else:
         res_json = response.json()
-        print(f'{current_thread().name}---Response:{res_json}')
+        print(f'Response:{res_json}')
         return res_json
 
 
