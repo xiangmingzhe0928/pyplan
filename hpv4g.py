@@ -158,7 +158,7 @@ def init_ip_proxy_pool(pages=2) -> list:
     return [f'{data["ip"]}:{data["port"]}' for data in list(chain(*ip_proxy_res))]
 
 
-def run():
+def run(max_workers=None):
     # 获取疫苗信息(默认选取第一个待秒疫苗)
     vaccines = get_vaccine_list()
     # 获取秒杀人信息
@@ -179,7 +179,7 @@ def run():
         pass
 
     # python3.8 默认max_workers = min(32, os.cpu_count() + 4)
-    with ThreadPoolExecutor() as t:
+    with ThreadPoolExecutor(max_workers=max_workers) as t:
         ip_proxy_len = len(ip_proxys)
         for i in range(100):
             index = i % ip_proxy_len
@@ -194,7 +194,7 @@ def _get_arguments():
     def _valid_int_type(i):
         valid_int = int(i)
         if valid_int < 1:
-            raise argparse.ArgumentTypeError('invalid int argument')
+            raise argparse.ArgumentTypeError(f'invalid int argument:{i}')
         return valid_int
 
     parser = argparse.ArgumentParser(description='HPV SecKill 疫苗秒杀')
@@ -209,4 +209,4 @@ if __name__ == '__main__':
     args = _get_arguments()
     REQ_HEADERS['tk'] = args.tk
     REQ_HEADERS['Cookie'] = args.cookie
-    run()
+    run(args.max_workers)
