@@ -58,7 +58,7 @@ def _get(url, params=None, **kwargs):
         return res_json
 
 
-def get_vaccine_list():
+def get_vaccine_list(region_code='5101'):
     """
     获取待秒杀疫苗列表
     :return:疫苗列表
@@ -81,7 +81,7 @@ def get_vaccine_list():
     }
     """
     # 分页查询可秒杀疫苗 regionCode:5101[四川成都区域编码]
-    req_param_list = {'offset': '0', 'limit': '10', 'regionCode': '5101'}
+    req_param_list = {'offset': '0', 'limit': '10', 'regionCode': region_code}
     res_vaccine = _get(URLS['VACCINE_LIST'], params=req_param_list, headers=REQ_HEADERS, verify=False)
     if '0000' != res_vaccine['code']:
         print(res_vaccine['msg'])
@@ -89,7 +89,7 @@ def get_vaccine_list():
 
     datas = res_vaccine['data']
     if not datas:
-        print(f'---暂无可秒杀疫苗---')
+        print(f'---区域:{region_code}暂无可秒杀疫苗---')
         exit(0)
     return datas
 
@@ -158,9 +158,9 @@ def init_ip_proxy_pool(pages=2) -> list:
     return [f'{data["ip"]}:{data["port"]}' for data in list(chain(*ip_proxy_res))]
 
 
-def run(max_workers=None):
+def run(max_workers=None, region_code=None):
     # 获取疫苗信息(默认选取第一个待秒疫苗)
-    vaccines = get_vaccine_list()
+    vaccines = get_vaccine_list(region_code)
     # 获取秒杀人信息
     user = get_user()
     # 秒杀请求参数
@@ -191,6 +191,7 @@ def _get_arguments():
     解析参数
     :return:
     """
+
     def _valid_int_type(i):
         valid_int = int(i)
         if valid_int < 1:
@@ -201,7 +202,7 @@ def _get_arguments():
     parser.add_argument('tk', help='名为tk的http header')
     parser.add_argument('cookie', help='http请求cookie')
     parser.add_argument('-mw', '--max_workers', type=_valid_int_type, help='最大线工作线程数 默认使用 min(32, os.cpu_count() + 4)')
-    parser.add_argument('-rc', '--region_code', type=int, help='区域编码 **暂不支持**')
+    parser.add_argument('-rc', '--region_code', type=int, default='5101', help='区域编码 默认使用成都编码5101')
     return parser.parse_args()
 
 
@@ -209,4 +210,4 @@ if __name__ == '__main__':
     args = _get_arguments()
     REQ_HEADERS['tk'] = args.tk
     REQ_HEADERS['Cookie'] = args.cookie
-    run(args.max_workers)
+    run(args.max_workers, args.region_code)
