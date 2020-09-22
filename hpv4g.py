@@ -8,6 +8,9 @@ from concurrent.futures import ThreadPoolExecutor
 from itertools import chain
 import argparse
 
+# disable ssl warnings
+requests.packages.urllib3.disable_warnings()
+
 """
  SecKill HPV
  - 抓取,配置Cookie
@@ -153,7 +156,7 @@ def init_ip_proxy_pool(pages=2) -> list:
     :return: ip代理池列表
     """
     ip_proxy_res = [
-        _get(URLS['IP_PROXY'], params={'page': p, 'country': '中国', 'order_by': 'validated_at'})['data']['data'] for
+        _get(URLS['IP_PROXY'], params={'page': p, 'country': '中国', 'order_by': 'validated_at'}, verify=False)['data']['data'] for
         p in range(1, pages + 1)]
     return [f'{data["ip"]}:{data["port"]}' for data in list(chain(*ip_proxy_res))]
 
@@ -182,6 +185,7 @@ def run(max_workers=None, region_code=None):
     with ThreadPoolExecutor(max_workers=max_workers) as t:
         ip_proxy_len = len(ip_proxys)
         for i in range(100):
+            # 此处并没有使用随机选择代理
             index = i % ip_proxy_len
             t.submit(sec_kill_task, req_param, {'https': None if index == 0 else ip_proxys[index]})
 
