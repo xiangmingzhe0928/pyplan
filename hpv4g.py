@@ -7,7 +7,9 @@ from threading import current_thread
 from concurrent.futures import ThreadPoolExecutor
 from itertools import chain
 import argparse
+import logging
 
+LOG_NAME = 'hpv.log'
 # disable ssl warnings
 requests.packages.urllib3.disable_warnings()
 
@@ -49,15 +51,13 @@ def _get(url, params=None, **kwargs):
     try:
         response = requests.get(url, params, **kwargs)
         response.raise_for_status()
-    except HTTPError as http_err:
-        print(f'--------HTTP error occurred--------: {http_err}')
-        exit(1)
     except Exception as err:
-        print(f'--------Other error occurred--------: {err}')
+        print(f'URL:{url} error occurred{err}')
+        logging.error(f'URL:{url} ERROR:{err}')
         exit(1)
     else:
         res_json = response.json()
-        print(f'Response:{res_json}')
+        logging.info(f'{url}\n{"-"*5 + "Request" + "-"*5}\n{"-"*5 + "Response" + "-"*5}\n{res_json}\nuseTime:{response.elapsed.total_seconds()}S\n')
         return res_json
 
 
@@ -156,7 +156,8 @@ def init_ip_proxy_pool(pages=2) -> list:
     :return: ip代理池列表
     """
     ip_proxy_res = [
-        _get(URLS['IP_PROXY'], params={'page': p, 'country': '中国', 'order_by': 'validated_at'}, verify=False)['data']['data'] for
+        _get(URLS['IP_PROXY'], params={'page': p, 'country': '中国', 'order_by': 'validated_at'}, verify=False)['data'][
+            'data'] for
         p in range(1, pages + 1)]
     return [f'{data["ip"]}:{data["port"]}' for data in list(chain(*ip_proxy_res))]
 
@@ -174,7 +175,7 @@ def run(max_workers=None, region_code=None):
     # 计算秒杀开始剩余毫秒数 startTime - serverNowTime
     _start_time_unix = int(datetime.datetime.strptime(vaccines[0]['startTime'], '%Y-%m-%d %H:%M:%S').timestamp() * 1000)
     if _start_time_unix - get_server_time() > 5 * 1000:
-        print(f'秒杀还未开始')
+        print(f'秒杀还未开始 请在秒杀开始前5秒内执行')
         exit(0)
 
     # _start_time_unix - get_server_time() 使用本地时间还是服务器时间？
@@ -207,11 +208,18 @@ def _get_arguments():
     parser.add_argument('cookie', help='http请求cookie')
     parser.add_argument('-mw', '--max_workers', type=_valid_int_type, help='最大线工作线程数 默认使用 min(32, os.cpu_count() + 4)')
     parser.add_argument('-rc', '--region_code', type=int, default='5101', help='区域编码 默认使用成都编码5101')
+    parser.add_argument('--log', default='WARNING', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'],
+                        help='日志级别 默认WARNING')
     return parser.parse_args()
 
 
 if __name__ == '__main__':
     args = _get_arguments()
+
+    logging.basicConfig(handlers=[logging.FileHandler(filename=LOG_NAME,
+                                                      encoding='utf-8', mode='a+')],
+                        format='%(message)s',
+                        level=getattr(logging, args.log))
     REQ_HEADERS['tk'] = args.tk
     REQ_HEADERS['Cookie'] = args.cookie
     run(args.max_workers, args.region_code)
