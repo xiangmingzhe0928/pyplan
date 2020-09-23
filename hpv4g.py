@@ -188,7 +188,7 @@ def run(max_workers=None, region_code=None):
         for i in range(100):
             # 此处并没有使用随机选择代理
             index = i % ip_proxy_len
-            t.submit(sec_kill_task, req_param, {'https': None if index == 0 else ip_proxys[index]})
+            t.submit(sec_kill_task, req_param, {'http': None if index == 0 else ip_proxys[index]})
 
 
 def _get_arguments():
