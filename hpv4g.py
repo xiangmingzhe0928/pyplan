@@ -1,10 +1,9 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 import requests
-from requests.exceptions import HTTPError
 import datetime
 from threading import current_thread
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 from itertools import chain
 import argparse
 import logging
@@ -40,7 +39,7 @@ REQ_HEADERS = {
     "Cookie": ""}
 
 
-def _get(url, params=None, **kwargs):
+def _get(url, params=None, error_exit=True, **kwargs):
     """
     GET请求. 请求返回错误码(4XX,5XX)时抛出异常
     :param url: 请求路径
@@ -54,10 +53,12 @@ def _get(url, params=None, **kwargs):
     except Exception as err:
         print(f'URL:{url} error occurred{err}')
         logging.error(f'URL:{url} ERROR:{err}')
-        exit(1)
+        if error_exit:
+            exit(1)
     else:
         res_json = response.json()
-        logging.info(f'{url}\n{"-"*5 + "Request" + "-"*5}\n{"-"*5 + "Response" + "-"*5}\n{res_json}\nuseTime:{response.elapsed.total_seconds()}S\n')
+        logging.info(
+            f'{url}\n{"-" * 5 + "Request" + "-" * 5}\n{"-" * 5 + "Response" + "-" * 5}\n{res_json}\nuseTime:{response.elapsed.total_seconds()}S\n')
         return res_json
 
 
@@ -134,7 +135,8 @@ def sec_kill_task(req_param, proxy=None):
         服务器做了频率限制 短时间请求太多返回 “操作频繁” 无法确定是 IP限制还是ID限制
         - 考虑加入ip代理处理IP限制 init_ip_proxy_pool()
         '''
-        res_json = _get(URLS['SEC_KILL'], params=req_param, headers=REQ_HEADERS, proxies=proxy, verify=False)
+        res_json = _get(URLS['SEC_KILL'], params=req_param, error_exit=False, headers=REQ_HEADERS, proxies=proxy,
+                        verify=False)
         if res_json['code'] == '0000':
             print(f'{current_thread().name} Kill Success')
             KILL_FLAG = True
@@ -185,10 +187,14 @@ def run(max_workers=None, region_code=None):
     # python3.8 默认max_workers = min(32, os.cpu_count() + 4)
     with ThreadPoolExecutor(max_workers=max_workers) as t:
         ip_proxy_len = len(ip_proxys)
-        for i in range(100):
-            # 此处并没有使用随机选择代理
-            index = i % ip_proxy_len
-            t.submit(sec_kill_task, req_param, {'http': None if index == 0 else ip_proxys[index]})
+        fs = [
+            t.submit(sec_kill_task, req_param, {'http': None if (index := i % ip_proxy_len) == 0 else ip_proxys[index]})
+            for i in range(max_workers + 5)]
+
+        # 30S后结束任务
+        wait(fs, 30, return_when=FIRST_COMPLETED)
+        global KILL_FLAG
+        KILL_FLAG = True
 
 
 def _get_arguments():
